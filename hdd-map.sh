@@ -11,6 +11,8 @@ traducir_cable() {
         "01:00.0-ata-2")  echo "M1-P6" ;;
         "01:00.0-ata-13") echo "M1-P7" ;;
         "01:00.0-ata-14") echo "M1-P8" ;;
+        "01:00.0-ata-15") echo "M2-P1" ;;
+        "01:00.0-ata-16") echo "M2-P2" ;;
         "00:1f.2-ata-2")  echo "PLACA-SATA2" ;;
         *) echo "DESCONOCIDO" ;;
     esac
@@ -22,11 +24,11 @@ echo "--------------------------------------------------------------------------
 
 # Iteramos solo sobre discos físicos (no particiones)
 lsblk -dno NAME,SERIAL,SIZE | while read dev serial size; do
-
+    
     # Buscamos la ruta que termina exactamente en el nombre del disco (ej. /sdb)
     # El grep -E asegura que no pillemos rutas genéricas
     full_path=$(ls -l /dev/disk/by-path/ | grep -E "/${dev}$" | sed 's/pci-0000://' | head -n 1 | awk '{print $9}')
-
+    
     if [ -z "$full_path" ]; then
         cable_id="N/A"
         port_display="INTERNO"
@@ -34,11 +36,11 @@ lsblk -dno NAME,SERIAL,SIZE | while read dev serial size; do
         cable_id=$(traducir_cable "$full_path")
         port_display="$full_path"
     fi
-
+    
     # Estado SMART (silenciamos errores por si el disco no lo soporta)
     health=$(sudo smartctl -H /dev/$dev 2>/dev/null | grep "test result" | cut -d: -f2 | xargs)
     [ -z "$health" ] && health="N/A"
-
+    
     # Colores
     if [ "$health" = "PASSED" ] || [ "$health" = "OK" ]; then
         health_fmt="\e[32m$health\e[0m"
