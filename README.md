@@ -22,6 +22,7 @@ Este script cruza la siguiente información:
 4. **Serial Number:** El identificador único impreso en la pegatina del disco.
 5. **Tamaño** Capacidad del HDD
 6. **Estado SMART instantáneo:** Muestra si el disco está "PASSED" u "OK" en tiempo real.
+7. **Mount** Indicador de si está montado o no.
 
 ### 🛠️ Instalación y Uso
 
@@ -38,17 +39,30 @@ Este script cruza la siguiente información:
 3. **Ejecución:**
     ```bash
     sudo ./hdd-map.sh
+    ```
+    ![Ejemplo de ejecución](./screenshot2.png)
 
-    CABLE        ID FÍSICO           DISCO      SERIAL NUMBER      TAMAÑO    SMART
-    ------------------------------------------------------------------------------------------------------
-    PLACA-SATA2  00:1f.2-ata-2        /dev/sda   S21JXXXXXX         465,8G     PASSED
-    M1-P1        01:00.0-ata-1        /dev/sdb   WD-WCXXXXXX        3,6T       PASSED
-    M1-P2        01:00.0-ata-9        /dev/sdc   WD-WCXXXXXX        1,8T       PASSED
-    M1-P3        01:00.0-ata-10       /dev/sdd   663XXXXXX          1,8T       PASSED
-    M1-P4        01:00.0-ata-11       /dev/sde   WD-WCAXXXXXX       931,5G     PASSED
-    M1-P5        01:00.0-ata-12       /dev/sdf   WD-WCCXXXXXX       931,5G     PASSED
-    M1-P6        01:00.0-ata-2        /dev/sdg   WD-WMCXXXXXX       931,5G     PASSED
-    M1-P7        01:00.0-ata-13       /dev/sdh   WD-WMCXXXXXX       931,5G     PASSED
-    M1-P8        01:00.0-ata-14       /dev/sdi   WD-WCCXXXXXX       465,8G     PASSED
-    ...
-    ...
+4. **Añadir nuevos discos:**
+
+- Conecta el disco y ejecuta:
+
+    ```bash
+    sudo ./hdd-map.sh
+    ```
+
+- En la salida, la columna **CABLE** mostrará `DESCONOCIDO` y la columna **ID FÍSICO** indicará el identificador del puerto al que está conectado (ej. `01:00.0-ata-3`).
+
+- Abre `hdd-map.sh` y añade el mapeo en la función `traducir_cable()` usando el identificador físico como clave. Ejemplo:
+
+    ```bash
+    # dentro de traducir_cable()
+    case "$1" in
+        ...
+        "01:00.0-ata-3")  echo "M2-P3" ;;
+        ...
+    esac
+    ```
+
+- Guarda el archivo y vuelve a ejecutar `sudo ./hdd-map.sh`. La columna **CABLE** debería mostrar ahora la etiqueta (por ejemplo `M2-P3`).
+
+![Ejecución con nuevo disco](./screenshot.png)
