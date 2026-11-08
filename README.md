@@ -21,8 +21,9 @@ Este script cruza la siguiente información:
 3. **Nombre dev** Nombre del dispositivo dinámico asignado por el sistema al HDD
 4. **Serial Number:** El identificador único impreso en la pegatina del disco.
 5. **Tamaño** Capacidad del HDD
-6. **Estado SMART instantáneo:** Muestra si el disco está "PASSED" u "OK" en tiempo real.
-7. **Mount** Indicador de si está montado o no.
+6. **Libre** Espacio disponible, sumando los sistemas de archivos montados del disco (`-` si no hay ninguno montado)
+7. **Estado SMART instantáneo:** Muestra si el disco está "PASSED" u "OK" en tiempo real.
+8. **Mount** Indicador de si está montado o no.
 
 ### 🛠️ Instalación y Uso
 

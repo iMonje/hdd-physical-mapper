@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0] - 2026-11-08
+### Added
+- **Columna LIBRE:** Muestra junto a TAMAÑO el espacio disponible de cada disco, sumando sus particiones y volúmenes LVM montados (`-` si no hay ninguno montado).
+
+### Changed
+- **Alineación de columnas:** El relleno se calcula por caracteres visibles, de modo que las tildes y los colores no descuadran la tabla.
+
+### Fixed
+- **Serial vacío:** Un disco sin número de serie ya no desplaza el resto de campos de su fila.
+- **SMART en discos SAS:** Ahora se reconoce la línea `Health Status`, que antes se mostraba como `N/A`.
+- **Dispositivos no físicos:** Se ignoran los dispositivos que no son discos (loop, unidades ópticas...).
+
 ## [1.2.0] - 2026-02-14
 ### Added
 - **Columna de Montaje:** Nueva funcionalidad que detecta si el disco o alguna de sus particiones está montada en el sistema con indicadores de color (Verde/Rojo)

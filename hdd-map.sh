@@ -22,44 +22,89 @@ traducir_cable() {
     esac
 }
 
-# Cabecera ajustada (Añadida columna MOUNT)
-printf "%-12s %-20s %-10s %-18s %-10s %-10s %-8s\n" "CABLE" "ID FÍSICO" "DISCO" "SERIAL NUMBER" "TAMAÑO" "SMART" "MOUNT"
-echo "----------------------------------------------------------------------------------------------------------------"
+VERDE=$'\e[32m'
+ROJO=$'\e[31m'
+RESET=$'\e[0m'
 
-# Iteramos solo sobre discos físicos
-lsblk -dno NAME,SERIAL,SIZE | while read dev serial size; do
-    
-    # Buscamos la ruta física
-    full_path=$(ls -l /dev/disk/by-path/ | grep -E "/${dev}$" | sed 's/pci-0000://' | head -n 1 | awk '{print $9}')
-    
-    if [ -z "$full_path" ]; then
+# Imprime una celda rellenando por caracteres visibles: así ni las tildes
+# ni los códigos de color descuadran las columnas. Uso: celda TEXTO ANCHO [COLOR]
+celda() {
+    local relleno=$(( $2 - ${#1} ))
+    [ "$relleno" -lt 0 ] && relleno=0
+    printf '%s%s%s%*s ' "${3:-}" "$1" "${3:+$RESET}" "$relleno" ""
+}
+
+# Uso: fila CABLE PUERTO DISCO SERIAL TAMAÑO LIBRE SMART MOUNT [COLOR_SMART] [COLOR_MOUNT]
+fila() {
+    celda "$1" 12
+    celda "$2" 19
+    celda "$3" 10
+    celda "$4" 18
+    celda "$5" 9
+    celda "$6" 9
+    celda "$7" 10 "${9:-}"
+    celda "$8" 8 "${10:-}"
+    echo
+}
+
+# Devuelve el identificador del puerto físico de un disco (vacío si no tiene)
+ruta_fisica() {
+    local enlace
+    for enlace in /dev/disk/by-path/*; do
+        if [ "$enlace" -ef "/dev/$1" ]; then
+            enlace="${enlace##*/}"
+            echo "${enlace#pci-0000:}"
+            return
+        fi
+    done
+}
+
+# Suma el espacio libre de todos los sistemas de archivos montados del disco
+# (particiones y LVM incluidos). Devuelve "-" si no hay ninguno montado.
+espacio_libre() {
+    local bytes
+    bytes=$(lsblk -bnro FSAVAIL "/dev/$1" | awk 'NF { total += $1; hay = 1 } END { if (hay) printf "%.0f", total }')
+    if [ -z "$bytes" ]; then
+        echo "-"
+    else
+        numfmt --to=iec --format=%.1f "$bytes"
+    fi
+}
+
+fila "CABLE" "ID FÍSICO" "DISCO" "SERIAL NUMBER" "TAMAÑO" "LIBRE" "SMART" "MOUNT"
+printf '%*s\n' 103 "" | tr ' ' '-'
+
+# Iteramos solo sobre discos físicos. SERIAL va al final porque puede estar
+# vacío y, en otra posición, desplazaría el resto de campos.
+lsblk -dno NAME,SIZE,TYPE,SERIAL | while read -r dev size tipo serial; do
+    [ "$tipo" = "disk" ] || continue
+
+    port_display=$(ruta_fisica "$dev")
+    if [ -z "$port_display" ]; then
         cable_id="N/A"
         port_display="INTERNO"
     else
-        cable_id=$(traducir_cable "$full_path")
-        port_display="$full_path"
+        cable_id=$(traducir_cable "$port_display")
     fi
-    
+
     # Comprobamos si el disco o alguna de sus particiones tiene un punto de montaje
-    mounted_check=$(lsblk /dev/$dev -no MOUNTPOINTS | grep -v "^$" | wc -l)
-    if [ "$mounted_check" -gt 0 ]; then
-        mount_fmt="\e[32mSI\e[0m"
+    if lsblk "/dev/$dev" -no MOUNTPOINTS | grep -q .; then
+        mount="SI"
+        mount_color="$VERDE"
     else
-        mount_fmt="\e[31mNO\e[0m"
+        mount="NO"
+        mount_color="$ROJO"
     fi
-    # -------------------------------
 
-    # Estado SMART
-    health=$(sudo smartctl -H /dev/$dev 2>/dev/null | grep "test result" | cut -d: -f2 | xargs)
+    # Estado SMART (ATA/NVMe: "test result"; SAS: "Health Status")
+    health=$(sudo smartctl -H "/dev/$dev" 2>/dev/null | grep -E "test result|Health Status" | cut -d: -f2 | xargs)
     [ -z "$health" ] && health="N/A"
-    
-    # Colores SMART
+
     if [ "$health" = "PASSED" ] || [ "$health" = "OK" ]; then
-        health_fmt="\e[32m$health\e[0m"
+        health_color="$VERDE"
     else
-        health_fmt="\e[31m$health\e[0m"
+        health_color="$ROJO"
     fi
 
-    # Imprimir línea con la nueva columna
-    printf "%-12s %-19s %-10s %-18s %-9s %-20b %-8b\n" "$cable_id" "$port_display" "/dev/$dev" "$serial" "$size" "$health_fmt" "$mount_fmt"
+    fila "$cable_id" "$port_display" "/dev/$dev" "${serial:--}" "$size" "$(espacio_libre "$dev")" "$health" "$mount" "$health_color" "$mount_color"
 done
